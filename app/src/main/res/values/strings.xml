@@ -8,5 +8,7 @@
     <string name="action_undo">Undo</string>
     <string name="action_delete_all">Delete All</string>
     <string name="action_bar">Actionbar</string>
+    <string name="connect">Connect</string>
+    <string name="ip_dialog_title">Enter Server Info</string>
 
 </resources>

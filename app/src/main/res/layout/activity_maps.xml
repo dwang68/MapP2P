@@ -19,40 +19,24 @@
         android:paddingLeft="@dimen/activity_horizontal_margin"
         android:paddingRight="@dimen/activity_horizontal_margin">
 
-    <TextView
-        android:id="@+id/infoport"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-    <TextView
+        <TextView
+            android:id="@+id/infoport"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+        <TextView
             android:id="@+id/infoip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/infoport"/>
-    <ImageButton
-        android:id="@+id/connect"
-        android:layout_alignParentRight="true"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src = "@drawable/ic_action_send_now"/>
+        <ImageButton
+            android:id="@+id/connect"
+            android:layout_alignParentRight="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_action_send_now"
+            android:onClick="showIPDialog"/>
+
     </RelativeLayout>
-
-
-
-    <EditText
-        android:id="@+id/address"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Enter Target IP Address"
-        android:paddingLeft="@dimen/activity_horizontal_margin"
-        android:paddingRight="@dimen/activity_horizontal_margin"/>
-    <EditText
-        android:id="@+id/port"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Enter Target Port"
-        android:paddingLeft="@dimen/activity_horizontal_margin"
-        android:paddingRight="@dimen/activity_horizontal_margin"/>
-
 
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"

@@ -1,5 +1,6 @@
 package com.example.dalinwang.mapp2p;
 
+import android.app.DialogFragment;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.support.v7.app.ActionBarActivity;
@@ -53,7 +54,6 @@ public class MapsActivity extends ActionBarActivity {
 
     TextView  infoip, infoport;
     EditText editTextAddress, editTextPort;
-    ImageButton buttonConnect, buttonClear;
     ServerSocket serverSocket;
     private final static String TAG = "MapP2P";
     private static final int SocketServerPORT = 50505;
@@ -81,10 +81,8 @@ public class MapsActivity extends ActionBarActivity {
         editTextAddress = (EditText) findViewById(R.id.address);
         editTextPort = (EditText) findViewById(R.id.port);
         //editMessage = (EditText) findViewById(R.id.msg);
-        buttonConnect = (ImageButton) findViewById(R.id.connect);
 
 
-        buttonConnect.setOnClickListener(buttonConnectOnClickListener);
         fram_map = (FrameLayout) findViewById(R.id.fram_map);
         infoip.setText(getIpAddress());
         mMap.setOnMarkerClickListener(
@@ -304,15 +302,15 @@ public class MapsActivity extends ActionBarActivity {
 
                     } else if (response.equals(request_peers_ack)) {
                         if (!socket.getInetAddress().toString().substring(1).equals(getIpAddress())
-                         && !ip_address_list.contains(socket.getInetAddress().toString().substring(1))) {
-                                ip_address_list.add(socket.getInetAddress().toString().substring(1));
-                                MapsActivity.this.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        String toast_msg = "Connection Successful!";
-                                        Toast.makeText(getApplicationContext(), toast_msg, Toast.LENGTH_SHORT).show();
-                                    }
-                                });
+                                && !ip_address_list.contains(socket.getInetAddress().toString().substring(1))) {
+                            ip_address_list.add(socket.getInetAddress().toString().substring(1));
+                            MapsActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    String toast_msg = "Connection Successful!";
+                                    Toast.makeText(getApplicationContext(), toast_msg, Toast.LENGTH_SHORT).show();
+                                }
+                            });
 
                         }
                     } else if (response.contains(send_peers_info)) {
@@ -352,21 +350,19 @@ public class MapsActivity extends ActionBarActivity {
 
     }
 
-
     //Client side
-    View.OnClickListener buttonConnectOnClickListener =
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View arg0) {
-                    //ip_address_list.add(editTextAddress.getText().toString());
 
-                    MyClientTask myClientTask = new MyClientTask(
-                            editTextAddress.getText().toString(),
-                            SocketServerPORT);
-                    myClientTask.execute(request_peers);
-                }
-            };
+    public void showIPDialog(View v) {
+        DialogFragment newFragment = new IPDialogFragment();
+        newFragment.show(getFragmentManager(), "Enter IP Address");
+    }
 
+    // Run when Connect button is clicked in IP Dialog
+    public void connect(String address, int port) {
+        //ip_address_list.add(editTextAddress.getText().toString());
+        MyClientTask myClientTask = new MyClientTask(address, port);
+        myClientTask.execute(request_peers);
+    }
 
     public class MyClientTask extends AsyncTask<String, Void, Void> {
 
