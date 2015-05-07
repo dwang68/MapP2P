@@ -2,7 +2,7 @@
 <resources>
 
     <string name="app_name">MapP2P</string>
-    <string name="title_activity_maps">MapP2P</string>
+    <string name="title_activity_maps">Memo Map</string>
     <string name="action_drawline">Draw line</string>
     <string name="action_droppin">Drop pin</string>
     <string name="action_undo">Undo</string>

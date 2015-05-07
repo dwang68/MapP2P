@@ -1,12 +1,14 @@
 package com.example.dalinwang.mapp2p;
 
 import android.app.DialogFragment;
+import android.content.Context;
 import android.graphics.Color;
-import android.support.annotation.NonNull;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.support.v7.app.ActionBarActivity;
 import android.graphics.Point;
 import android.os.AsyncTask;
-import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -14,7 +16,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -39,17 +40,16 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.List;
 import java.util.HashSet;
 import android.widget.Toast;
-import android.widget.ImageButton;
 import com.google.android.gms.maps.CameraUpdateFactory;
 
 
-public class MapsActivity extends ActionBarActivity {
+public class MapsActivity extends ActionBarActivity implements LocationListener {
     Collection<String> ip_address_list = new HashSet<String>();
 
     TextView  infoip, infoport;
@@ -71,6 +71,11 @@ public class MapsActivity extends ActionBarActivity {
     final List<Polyline> polylines = new ArrayList<Polyline>();
     final List<Integer> actionsPerformed = new ArrayList<Integer>();  // 0 = drop pin, 1 = draw line
 
+    private Menu menu;  // used for updating menu toggle buttons
+    LocationManager mLocationManager;
+    double mLatitude;
+    double mLongitude;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -81,7 +86,6 @@ public class MapsActivity extends ActionBarActivity {
         editTextAddress = (EditText) findViewById(R.id.address);
         editTextPort = (EditText) findViewById(R.id.port);
         //editMessage = (EditText) findViewById(R.id.msg);
-
 
         fram_map = (FrameLayout) findViewById(R.id.fram_map);
         infoip.setText(getIpAddress());
@@ -167,14 +171,19 @@ public class MapsActivity extends ActionBarActivity {
                                 List<LatLng> current_pts = polylines.get(lineNum).getPoints();
                                 String line_msg = "l:";
                                 for (LatLng pt : current_pts) {
-                                    String line_msg_latitude = new Double(pt.latitude).toString();
-                                    String line_msg_longitude = new Double(pt.longitude).toString();
+                                    String line_msg_latitude = Double.toString(pt.latitude);
+                                    String line_msg_longitude = Double.toString(pt.longitude);
                                     line_msg = line_msg + (";" + line_msg_latitude + "," + line_msg_longitude);
                                 }
 
                                 // iterate through peer list
+                                Log.d(TAG, "my address is" + getIpAddress());
                                 for(String address : ip_address_list) {
-                                    if(!address.equals(getIpAddress())) {
+                                    Log.d(TAG, "sending line to " + address);
+                                    // check that we aren't sending to our own IP
+                                    // and that line_msg isn't just "l:"
+                                    if(!address.equals(getIpAddress()) && !line_msg.equals("l:")) {
+                                        Log.d(TAG, "sending line to " + address);
                                         MyClientTask myClientTask = new MyClientTask(
                                                 address,
                                                 SocketServerPORT);
@@ -196,7 +205,7 @@ public class MapsActivity extends ActionBarActivity {
                                 break;
                         }
                     }
-                    if (drawingLine == true) {
+                    if (drawingLine) {
                         return true;
 
                     } else {
@@ -260,6 +269,13 @@ public class MapsActivity extends ActionBarActivity {
                     final String newAddress = socket.getInetAddress().toString().substring(1);
 
                     if (response.equals(request_peers)) {
+                        MapsActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(), "received connection request", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        Log.d(TAG + " Server", "Received message: " + response);
                         // send ack to new connection
                         MyClientTask myClientTask = new MyClientTask(
                                 socket.getInetAddress().toString().substring(1),
@@ -291,6 +307,7 @@ public class MapsActivity extends ActionBarActivity {
                         //add new connection to ip_address_list
                         if (!ip_address_list.contains(newAddress) && !newAddress.equals(getIpAddress())) {
                             ip_address_list.add(socket.getInetAddress().toString().substring(1));
+                            Log.d(TAG + " Server", "new connection from " + socket.getInetAddress().toString().substring(1) + "!");
                             MapsActivity.this.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -301,27 +318,33 @@ public class MapsActivity extends ActionBarActivity {
                         }
 
                     } else if (response.equals(request_peers_ack)) {
-                        if (!socket.getInetAddress().toString().substring(1).equals(getIpAddress())
-                                && !ip_address_list.contains(socket.getInetAddress().toString().substring(1))) {
-                            ip_address_list.add(socket.getInetAddress().toString().substring(1));
-                            MapsActivity.this.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    String toast_msg = "Connection Successful!";
-                                    Toast.makeText(getApplicationContext(), toast_msg, Toast.LENGTH_SHORT).show();
-                                }
-                            });
+                        Log.d(TAG + " Server", "Received message: " + response);
+                        //if (!socket.getInetAddress().toString().substring(1).equals(getIpAddress())
+                        //        && !ip_address_list.contains(socket.getInetAddress().toString().substring(1))) {
+                        final String newguy = socket.getInetAddress().toString().substring(1);
+                        ip_address_list.add(socket.getInetAddress().toString().substring(1));
+                        MapsActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                String toast_msg = "Connection to " + newguy + " Successful!";
+                                Log.d(TAG + " Server", "connected to " + newguy + "!");
+                                Toast.makeText(getApplicationContext(), toast_msg, Toast.LENGTH_SHORT).show();
+                            }
+                        });
 
-                        }
+                        //}
                     } else if (response.contains(send_peers_info)) {
+                        Log.d(TAG + " Server", "Received message: " + response);
                         String peerAddress = response.split(":")[1];
                         ip_address_list.add(peerAddress);
 
 
                     } else if (response.contains(send_new_connection_info)) {
+                        Log.d(TAG + " Server", "Received message: " + response);
                         String new_connection_address = response.split(":")[1];
                         ip_address_list.add(new_connection_address);
                     } else if (response.contains("p:")) {
+                        Log.d(TAG + " Server", "Received marker");
                         //String temp[] = response.split(":");
                         MapsActivity.this.runOnUiThread(new Runnable() {
                             @Override
@@ -331,6 +354,7 @@ public class MapsActivity extends ActionBarActivity {
                         });
 
                     } else if (response.contains("l:")) {
+                        Log.d(TAG + " Server", "Received line");
                         MapsActivity.this.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -360,6 +384,9 @@ public class MapsActivity extends ActionBarActivity {
     // Run when Connect button is clicked in IP Dialog
     public void connect(String address, int port) {
         //ip_address_list.add(editTextAddress.getText().toString());
+        //MyClientTask myClientTask = new MyClientTask(address, port);
+        Log.d(TAG, "connecting to ip: " + address + " now");
+        Log.d(TAG, "connecting to port: " + SocketServerPORT + " now");
         MyClientTask myClientTask = new MyClientTask(address, port);
         myClientTask.execute(request_peers);
     }
@@ -386,6 +413,7 @@ public class MapsActivity extends ActionBarActivity {
                 PrintStream printStream = new PrintStream(outputStream);
                 if (messages != null) {
                     printStream.print(messages[0]);
+                    Log.d(TAG + " Client", "Sent message: " + messages[0]);
                 }
                 printStream.close();
             } catch (UnknownHostException e) {
@@ -457,6 +485,7 @@ public class MapsActivity extends ActionBarActivity {
         // Inflate the menu items for use in the action bar
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu, menu);
+        this.menu = menu;
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -471,20 +500,26 @@ public class MapsActivity extends ActionBarActivity {
         switch (id) {
             case R.id.action_droppin:
                 drawingLine = false;
-                if (droppingPins != true) {
+                menu.findItem(R.id.action_drawline).setIcon(R.drawable.ic_action_drawline_off);
+                if (droppingPins == false) {
                     droppingPins = true;
+                    item.setIcon(R.drawable.ic_action_droppin);
                     dropPin();
                 } else {
                     droppingPins = false;
+                    item.setIcon(R.drawable.ic_action_droppin_off);
                 }
                 return true;
             case R.id.action_drawline:
                 droppingPins = false;
-                if (drawingLine != true) {
+                menu.findItem(R.id.action_droppin).setIcon(R.drawable.ic_action_droppin_off);
+                if (drawingLine == false) {
                     drawingLine = true;
                     Log.d(TAG, "drawing mode: on");
+                    item.setIcon(R.drawable.ic_action_drawline);
                 } else {
                     drawingLine = false;
+                    item.setIcon(R.drawable.ic_action_drawline_off);
                     Log.d(TAG, "drawing mode: off");
                 }
                 return true;
@@ -577,8 +612,8 @@ public class MapsActivity extends ActionBarActivity {
                                 MyClientTask myClientTask = new MyClientTask(
                                         address,
                                         SocketServerPORT);
-                                String pin_msg_latitude = new Double(point.latitude).toString();
-                                String pin_msg_longitude = new Double(point.longitude).toString();
+                                String pin_msg_latitude = Double.toString(point.latitude);
+                                String pin_msg_longitude = Double.toString(point.longitude);
                                 String pin_msg = "p:" + pin_msg_latitude + "," + pin_msg_longitude;
 
                                 myClientTask.execute(pin_msg);
@@ -669,15 +704,53 @@ public class MapsActivity extends ActionBarActivity {
         }
     }
 
+
     /**
      * This is where we can add markers or lines, add listeners or move the camera. In this case, we
-     * just add a marker near Africa.
+     * just add a marker on UCSB.
      * <p/>
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
     private void setUpMap() {
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(34.4125, -119.8481), 13));
-        mMap.addMarker(new MarkerOptions().position(new LatLng(34.4125, -119.8481)).title("UCSB")).setDraggable(true);
+        //mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(34.4125, -119.8481), 13));
+
+        // get the user's location
+        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Location location = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        // check if the location has been updated in the last two minutes
+        if(location != null && location.getTime() > Calendar.getInstance().getTimeInMillis() - 2 * 60 * 1000) {
+            mLatitude = location.getLatitude();
+            mLongitude = location.getLongitude();
+            // go to the user's location on the map
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mLatitude, mLongitude), 13));
+            // set a marker on user's current location
+            mMap.addMarker(new MarkerOptions().position(new LatLng(mLatitude, mLongitude)).title("You Are Here")).setDraggable(false);
+        }
+        else {
+            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+            // go to UCSB
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(34.4125, -119.8481), 13));
+        }
+        // set a marker on UCSB
+        mMap.addMarker(new MarkerOptions().position(new LatLng(34.4125, -119.8481)).title("UCSB")).setDraggable(false);
 
     }
+
+
+    public void onLocationChanged(Location location) {
+        if (location != null) {
+            Log.v("Location Changed", location.getLatitude() + " and " + location.getLongitude());
+            mLatitude = location.getLatitude();
+            mLongitude = location.getLongitude();
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mLatitude, mLongitude), 13));
+            mMap.addMarker(new MarkerOptions().position(new LatLng(mLatitude, mLongitude)).title("You Are Here")).setDraggable(false);
+            mLocationManager.removeUpdates(this);
+        }
+    }
+
+    public void onProviderDisabled(String arg0) {}
+    public void onProviderEnabled(String arg0) {}
+    public void onStatusChanged(String arg0, int arg1, Bundle arg2) {}
+
+
 }
